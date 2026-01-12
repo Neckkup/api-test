@@ -5,12 +5,13 @@ import base64
 import json
 import re
 
-# --- Config ---
+# --- Config: แก้ไข Project ID ของคุณที่นี่ ---
 PROJECT_ID = "291927098582"
 LOCATION = "global" 
-# -------------
+# ----------------------------------------
 
 def clean_youtube_url(url):
+    # ฟังก์ชันแปลงลิงก์ YouTube ให้เป็นรูปแบบมาตรฐาน
     if "youtu.be" in url:
         video_id = url.split("/")[-1].split("?")[0]
         return f"https://www.youtube.com/watch?v={video_id}"
@@ -42,6 +43,7 @@ def main(request):
         request_json = request.get_json(silent=True)
         action = request_json.get('action')
         
+        # Base URLs
         base_domain = f"https://{LOCATION}-discoveryengine.googleapis.com"
         api_base_url = f"{base_domain}/v1alpha/projects/{PROJECT_ID}/locations/{LOCATION}/notebooks"
         upload_base_url = f"{base_domain}/upload/v1alpha/projects/{PROJECT_ID}/locations/{LOCATION}/notebooks"
@@ -54,8 +56,7 @@ def main(request):
                 data = response.json()
                 result_list = [{'title': nb.get('title') or nb.get('displayName'), 'id': nb.get('name', '').split('/')[-1]} for nb in data.get('notebooks', [])]
                 return (jsonify({'status': 'success', 'notebooks': result_list}), 200, headers)
-            else:
-                return (jsonify({'status': 'error', 'message': f"List Notebooks Failed: {response.text}"}), response.status_code, headers)
+            else: return (jsonify({'status': 'error', 'message': response.text}), response.status_code, headers)
 
         # --- 2. Delete Notebook ---
         elif action == 'delete_notebook':
@@ -71,33 +72,27 @@ def main(request):
             if response.status_code == 200:
                 data = response.json()
                 return (jsonify({'status': 'success', 'notebook_id': data.get('name', '').split('/')[-1]}), 200, headers)
-            else:
-                return (jsonify({'status': 'error', 'message': response.text}), response.status_code, headers)
+            else: return (jsonify({'status': 'error', 'message': response.text}), response.status_code, headers)
 
-        # --- 4. Upload File ---
+        # --- 4. Upload File (PDF) ---
         elif action == 'upload_file':
             notebook_id = request_json.get('notebook_id')
             file_data_b64 = request_json.get('file_data')
             if not notebook_id or not file_data_b64: return (jsonify({'status': 'error', 'message': 'Missing data'}), 400, headers)
             try: file_binary = base64.b64decode(file_data_b64)
             except: return (jsonify({'status': 'error', 'message': 'Base64 Error'}), 400, headers)
-
-            response = requests.post(
-                f"{upload_base_url}/{notebook_id}/sources:uploadFile", 
-                headers={"Authorization": f"Bearer {user_token}", "X-Goog-Upload-File-Name": "uploaded_file.pdf", "X-Goog-Upload-Protocol": "raw", "Content-Type": "application/pdf"}, 
-                data=file_binary
-            )
+            response = requests.post(f"{upload_base_url}/{notebook_id}/sources:uploadFile", headers={"Authorization": f"Bearer {user_token}", "X-Goog-Upload-File-Name": "uploaded_file.pdf", "X-Goog-Upload-Protocol": "raw", "Content-Type": "application/pdf"}, data=file_binary)
             return (jsonify({'status': 'success', 'message': 'Uploaded'}), 200, headers) if response.status_code == 200 else (jsonify({'status': 'error', 'message': response.text}), response.status_code, headers)
 
-        # --- 5. Add Source (Web/YouTube Fix) ---
+        # --- 5. Add Source (Text / Web / YouTube) ---
         elif action == 'add_source':
             notebook_id = request_json.get('notebook_id')
             source_type = request_json.get('source_type')
             content_input = request_json.get('content')
             source_title = request_json.get('source_title', 'Untitled Source')
-
+            
             if not notebook_id or not content_input: return (jsonify({'status': 'error', 'message': 'Missing data'}), 400, headers)
-
+            
             target_url = f"{api_base_url}/{notebook_id}/sources:batchCreate"
             user_content = {}
             
@@ -108,60 +103,70 @@ def main(request):
             elif source_type == 'video':
                 clean_url = clean_youtube_url(content_input)
                 user_content = { "videoContent": { "youtubeUrl": clean_url } }
-
+            
             response = requests.post(target_url, headers={"Authorization": f"Bearer {user_token}", "Content-Type": "application/json"}, json={"userContents": [user_content]})
-            return (jsonify({'status': 'success', 'message': f'{source_type} Added'}), 200, headers) if response.status_code == 200 else (jsonify({'status': 'error', 'message': f"Add Source Failed: {response.text}"}), response.status_code, headers)
+            return (jsonify({'status': 'success', 'message': f'{source_type} Added'}), 200, headers) if response.status_code == 200 else (jsonify({'status': 'error', 'message': response.text}), response.status_code, headers)
 
-        # --- 6. List Sources (FIXED: Get from Notebook) ---
+        # --- 6. List Sources ---
         elif action == 'list_sources':
             notebook_id = request_json.get('notebook_id')
             if not notebook_id: return (jsonify({'status': 'error', 'message': 'Missing Notebook ID'}), 400, headers)
-            
-            # [FIXED] ใช้ URL เรียกดู Notebook 1 เล่ม (ซึ่งจะมี sources แปะมาด้วย)
             target_url = f"{api_base_url}/{notebook_id}"
-            
             response = requests.get(target_url, headers={"Authorization": f"Bearer {user_token}"})
-            
             if response.status_code == 200:
                 data = response.json()
-                # ดึง array sources ออกมาจากข้อมูล notebook
                 sources = data.get('sources', [])
-                
                 result_sources = []
                 for s in sources:
-                    # พยายามหา ID ให้เจอ (บางทีมันซ่อนใน sourceId object)
                     s_id = s.get('sourceId', {}).get('id')
-                    if not s_id and 'name' in s: # fallback ถ้าหาไม่เจอ ให้แกะจาก name ยาวๆ
-                         s_id = s['name'].split('/')[-1]
-                    
-                    result_sources.append({
-                        'id': s_id,
-                        'title': s.get('title') or s.get('displayName') or s.get('sourceName') or 'No Title',
-                        'type': 'YouTube' if 'videoContent' in s else ('Web' if 'webContent' in s else 'File/Text')
-                    })
+                    if not s_id and 'name' in s: s_id = s['name'].split('/')[-1]
+                    result_sources.append({ 'id': s_id, 'title': s.get('title') or s.get('displayName') or 'No Title', 'type': 'YouTube' if 'videoContent' in s else ('Web' if 'webContent' in s else 'File/Text') })
                 return (jsonify({'status': 'success', 'sources': result_sources}), 200, headers)
-            else:
-                return (jsonify({'status': 'error', 'message': f"List Sources Failed: {response.text}"}), response.status_code, headers)
+            else: return (jsonify({'status': 'error', 'message': response.text}), response.status_code, headers)
 
         # --- 7. Delete Source ---
         elif action == 'delete_source':
             notebook_id = request_json.get('notebook_id')
             source_id = request_json.get('source_id')
-            if not notebook_id or not source_id: return (jsonify({'status': 'error', 'message': 'Missing IDs'}), 400, headers)
-            
             full_source_name = f"projects/{PROJECT_ID}/locations/{LOCATION}/notebooks/{notebook_id}/sources/{source_id}"
-            target_url = f"{api_base_url}/{notebook_id}/sources:batchDelete"
+            response = requests.post(f"{api_base_url}/{notebook_id}/sources:batchDelete", headers={"Authorization": f"Bearer {user_token}", "Content-Type": "application/json"}, json={"names": [full_source_name]})
+            return (jsonify({'status': 'success', 'message': 'Source Deleted'}), 200, headers) if response.status_code == 200 else (jsonify({'status': 'error', 'message': response.text}), response.status_code, headers)
+
+        # --- 8. Generate Audio (Create) ---
+        elif action == 'generate_audio':
+            notebook_id = request_json.get('notebook_id')
+            if not notebook_id: return (jsonify({'status': 'error', 'message': 'Missing Notebook ID'}), 400, headers)
             
+            # ใช้ Endpoint มาตรฐานสำหรับสร้างเสียง
+            target_url = f"{api_base_url}/{notebook_id}/audioOverviews"
+            
+            # ส่ง Body ว่าง (เพื่อให้ใช้ Source ทั้งหมดในสมุด)
             response = requests.post(
-                target_url,
-                headers={"Authorization": f"Bearer {user_token}", "Content-Type": "application/json"},
-                json={"names": [full_source_name]}
+                target_url, 
+                headers={"Authorization": f"Bearer {user_token}", "Content-Type": "application/json"}, 
+                json={}
             )
             
             if response.status_code == 200:
-                return (jsonify({'status': 'success', 'message': 'Source Deleted'}), 200, headers)
+                return (jsonify({'status': 'success', 'message': 'คำสั่งสร้างเสียงถูกส่งแล้ว (รอ AI ประมวลผลสักครู่)'}), 200, headers)
             else:
-                return (jsonify({'status': 'error', 'message': f"Delete Source Failed: {response.text}"}), response.status_code, headers)
+                return (jsonify({'status': 'error', 'message': f"Create Failed: {response.text}"}), response.status_code, headers)
+
+        # --- 9. Delete Audio (Reset) ---
+        elif action == 'delete_audio':
+            notebook_id = request_json.get('notebook_id')
+            if not notebook_id: return (jsonify({'status': 'error', 'message': 'Missing Notebook ID'}), 400, headers)
+            
+            # ลบ Audio Overview (default)
+            target_url = f"{api_base_url}/{notebook_id}/audioOverviews/default"
+            
+            response = requests.delete(target_url, headers={"Authorization": f"Bearer {user_token}"})
+            
+            # API อาจตอบกลับ 200 (OK) หรือ 204 (No Content)
+            if response.status_code == 200 or response.status_code == 204:
+                return (jsonify({'status': 'success', 'message': 'ลบเสียงเดิมเรียบร้อย'}), 200, headers)
+            else:
+                return (jsonify({'status': 'error', 'message': f"Delete Failed: {response.text}"}), response.status_code, headers)
 
         else:
             return (jsonify({'status': 'error', 'message': 'Unknown Action'}), 400, headers)
