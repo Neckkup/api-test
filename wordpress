@@ -1,22 +1,22 @@
-<div style="max-width: 700px; margin: 30px auto; font-family: 'Segoe UI', Tahoma, sans-serif; padding: 30px; border-radius: 16px; background: white; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border: 1px solid #f0f0f0;">
+<div style="max-width: 750px; margin: 30px auto; font-family: 'Segoe UI', Tahoma, sans-serif; padding: 30px; border-radius: 16px; background: white; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border: 1px solid #e0e0e0;">
     
     <div style="text-align:center; margin-bottom:25px;">
-        <h2 style="margin:0; color:#1a73e8;">📚 NotebookLM Manager</h2>
-        <p style="color:#666; font-size:14px;">จัดการสมุดครบวงจร (Enterprise Edition)</p>
+        <h2 style="margin:0; color:#1a73e8; font-size: 24px;">📚 NotebookLM Remote Console</h2>
+        <p style="color:#666; font-size:14px;">จัดการสมุด & สั่งสร้างเสียงบรรยาย</p>
     </div>
 
     <div style="background: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 25px; border: 1px solid #e9ecef;">
-        <label style="font-weight:bold; color:#444;">🔑 Google Access Token</label>
-        <input type="text" id="access-token" placeholder="วาง Token ที่ได้จาก gcloud auth print-access-token" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; margin-top:5px; font-family:monospace; color:#333;">
+        <label style="font-weight:bold; color:#444; font-size: 13px;">🔑 Google Access Token</label>
+        <input type="text" id="access-token" placeholder="วาง Token ที่ได้จาก gcloud auth print-access-token" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; margin-top:5px; font-family:monospace; color:#333; font-size: 12px;">
     </div>
 
     <div style="margin-bottom: 30px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <label style="font-weight:bold; color:#444;">📋 เลือกสมุดงาน</label>
-            <button type="button" onclick="listNotebooks()" style="background:#1a73e8; color:white; border:none; padding:6px 15px; border-radius:20px; cursor:pointer; font-size:13px; font-weight:bold;">🔄 รีเฟรช</button>
+            <label style="font-weight:bold; color:#444;">📋 รายชื่อสมุดงาน</label>
+            <button type="button" onclick="listNotebooks()" style="background:#1a73e8; color:white; border:none; padding:6px 15px; border-radius:20px; cursor:pointer; font-size:13px; font-weight:bold; transition: 0.2s;">🔄 รีเฟรช</button>
         </div>
-        <div id="notebook-list-box" style="height: 180px; overflow-y: auto; background: #fff; border: 1px solid #ddd; border-radius: 8px;">
-            <p style="text-align:center; color:#999; margin-top:70px;">กดปุ่ม "รีเฟรช" เพื่อโหลดข้อมูล</p>
+        <div id="notebook-list-box" style="height: 160px; overflow-y: auto; background: #fff; border: 1px solid #ddd; border-radius: 8px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);">
+            <p style="text-align:center; color:#999; margin-top:60px; font-size: 13px;">กดปุ่ม "รีเฟรช" เพื่อโหลดข้อมูลสมุด</p>
         </div>
     </div>
 
@@ -26,207 +26,194 @@
         
         <div style="background:#fff; border:1px solid #eee; padding:15px; border-radius:8px;">
             <label style="font-weight:bold; font-size:14px; color:#1a73e8;">➕ สร้างสมุดใหม่</label>
-            <input type="text" id="nb-title" placeholder="ตั้งชื่อสมุด..." style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; margin:10px 0;">
-            <button type="button" onclick="createNotebook()" style="width:100%; padding:8px; background:#1a73e8; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:bold;">สร้าง</button>
-            <div id="create-result" style="font-size:12px; margin-top:5px;"></div>
+            <input type="text" id="nb-title" placeholder="ตั้งชื่อสมุด..." style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; margin:10px 0; font-size: 13px;">
+            <button type="button" onclick="createNotebook()" style="width:100%; padding:8px; background:#1a73e8; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:bold; font-size: 13px;">สร้างสมุด</button>
         </div>
 
         <div style="background:#fff; border:1px solid #eee; padding:15px; border-radius:8px;">
             <label style="font-weight:bold; font-size:14px; color:#34a853;">📥 เพิ่มข้อมูลเข้าสมุด</label>
+            <input type="text" id="target-nb-id" placeholder="เลือกสมุดจากรายการด้านบน" style="width:100%; padding:8px; background:#f1f3f4; border:1px solid #ddd; border-radius:6px; margin:10px 0; font-family:monospace; color:#333; font-size: 11px;" readonly>
             
-            <input type="text" id="target-nb-id" placeholder="เลือกสมุดจากรายการด้านบน" style="width:100%; padding:8px; background:#f1f3f4; border:1px solid #ddd; border-radius:6px; margin:10px 0; font-family:monospace; color:#333;" readonly>
-
             <div style="display:flex; gap:5px; margin-bottom:10px;">
-                <button onclick="switchTab('pdf')" id="tab-pdf" style="flex:1; padding:5px; cursor:pointer; background:#34a853; color:white; border:none; border-radius:4px;">📄 อัปโหลด PDF</button>
-                <button onclick="switchTab('text')" id="tab-text" style="flex:1; padding:5px; cursor:pointer; background:#eee; color:#555; border:none; border-radius:4px;">📝 แปะข้อความ</button>
+                <button onclick="switchTab('pdf')" id="tab-pdf" class="tab-btn active-tab" style="flex:1;">PDF</button>
+                <button onclick="switchTab('text')" id="tab-text" class="tab-btn" style="flex:1;">Text</button>
+                <button onclick="switchTab('web')" id="tab-web" class="tab-btn" style="flex:1;">Web</button>
+                <button onclick="switchTab('video')" id="tab-video" class="tab-btn" style="flex:1;">YT</button>
             </div>
 
-            <div id="content-pdf">
+            <div id="content-pdf" class="tab-content">
                 <input type="file" id="file-input" accept="application/pdf" style="font-size:12px; width:100%; margin-bottom:8px;">
-                <button type="button" onclick="uploadFile()" id="btn-upload" style="width:100%; padding:8px; background:#34a853; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:bold;">อัปโหลดไฟล์</button>
+                <button type="button" onclick="uploadFile()" class="action-btn btn-green">อัปโหลดไฟล์ PDF</button>
             </div>
-
-            <div id="content-text" style="display:none;">
-                <input type="text" id="text-title" placeholder="หัวข้อเรื่อง..." style="width:100%; padding:5px; border:1px solid #ddd; border-radius:4px; margin-bottom:5px;">
-                <textarea id="text-body" rows="3" placeholder="วางข้อความที่นี่..." style="width:100%; padding:5px; border:1px solid #ddd; border-radius:4px; margin-bottom:5px; font-family:sans-serif;"></textarea>
-                <button type="button" onclick="addTextSource()" id="btn-text" style="width:100%; padding:8px; background:#fbbc04; color:black; border:none; border-radius:6px; cursor:pointer; font-weight:bold;">บันทึกข้อความ</button>
+            <div id="content-text" class="tab-content" style="display:none;">
+                <input type="text" id="text-title" placeholder="หัวข้อ..." class="input-field">
+                <textarea id="text-body" rows="3" placeholder="เนื้อหาข้อความ..." class="input-field"></textarea>
+                <button type="button" onclick="addSource('text')" class="action-btn btn-yellow">บันทึกข้อความ</button>
             </div>
-
-            <div id="upload-result" style="font-size:12px; margin-top:5px;"></div>
+            <div id="content-web" class="tab-content" style="display:none;">
+                <input type="text" id="web-title" placeholder="ชื่อเว็บ..." class="input-field">
+                <input type="text" id="web-url" placeholder="https://..." class="input-field">
+                <button type="button" onclick="addSource('web')" class="action-btn btn-blue">บันทึกลิงก์เว็บ</button>
+            </div>
+            <div id="content-video" class="tab-content" style="display:none;">
+                <input type="text" id="video-url" placeholder="https://youtube.com/..." class="input-field">
+                <button type="button" onclick="addSource('video')" class="action-btn btn-red">เพิ่ม YouTube</button>
+            </div>
+            
+            <div id="upload-result" style="font-size:12px; margin-top:8px; height: 16px;"></div>
         </div>
     </div>
+    
+    <div style="margin-top:25px; background:#fff; border:1px solid #ddd; border-radius:8px; padding:20px;">
+        
+        <div id="audio-control-panel" style="display:none;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <label style="font-weight:bold; font-size:15px; color:#555;">🎧 จัดการเสียงบรรยาย</label>
+                <a id="google-link" href="#" target="_blank" style="text-decoration:none; color:#1a73e8; font-weight:bold; font-size:13px; border:1px solid #1a73e8; padding:5px 12px; border-radius:20px;">🔗 ไปฟังที่ Google NotebookLM</a>
+            </div>
 
-    <div id="link-container" style="display:none; margin-top:20px; text-align:center; background:#e6f4ea; padding:15px; border-radius:8px; border:1px dashed #34a853;">
-        <h4 style="margin:0 0 5px 0; color:#137333;">✅ สำเร็จ!</h4>
-        <a id="real-notebook-link" href="#" target="_blank" style="text-decoration:none; color:#1a73e8; font-weight:bold; font-size:14px;">💬 คลิกเพื่อไปคุยกับสมุดเล่มนี้</a>
+            <div style="background:#f8f9fa; padding:15px; border-radius:8px; text-align:center; border:1px solid #eee;">
+                <p id="audio-status" style="font-size:13px; color:#666; margin-top:0;">
+                    กดปุ่มเพื่อสั่ง AI สร้างเสียง (Podcast)
+                </p>
+                <div style="display:flex; gap:10px; justify-content:center; margin-top:10px;">
+                    <button onclick="generateAudio()" style="background:#673ab7; color:white; border:none; padding:8px 20px; border-radius:20px; cursor:pointer; font-weight:bold; font-size:13px;">✨ สั่งสร้างเสียงใหม่</button>
+                    <button onclick="deleteAudio()" style="background:#fff; color:#d93025; border:1px solid #d93025; padding:8px 20px; border-radius:20px; cursor:pointer; font-weight:bold; font-size:13px;">🗑️ ลบเสียงเดิม</button>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-top:20px; border-top:1px solid #eee; padding-top:15px;">
+             <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:13px; font-weight:bold; color:#777;">📄 รายการไฟล์ในสมุด:</span>
+                <button onclick="listSources()" style="font-size:12px; cursor:pointer; background:none; border:none; color:#1a73e8; font-weight:bold;">รีเฟรชรายการ</button>
+            </div>
+            <div id="source-list-box" style="margin-top:10px; max-height:150px; overflow-y:auto;">
+                <p style="text-align:center; color:#999; font-size:13px; margin-top:20px;">(เลือกสมุดด้านบนเพื่อดูข้อมูล)</p>
+            </div>
+        </div>
     </div>
 
 </div>
 
-<script>
-    const CF_URL = "https://notebooklm-chat-api-291927098582.asia-southeast1.run.app"; 
-    const PROJECT_ID = "291927098582"; // ใส่ Project ID ไว้ตรงนี้เพื่อสร้างลิงก์ที่ถูกต้อง
+<style>
+    .input-field { width:100%; padding:6px; border:1px solid #ddd; border-radius:4px; margin-bottom:6px; box-sizing: border-box; font-size: 13px; }
+    .action-btn { width:100%; padding:8px; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:bold; font-size: 13px; }
+    .btn-green { background:#34a853; } .btn-yellow { background:#fbbc04; color:black; } 
+    .btn-blue { background:#4285f4; } .btn-red { background:#ea4335; }
+    .source-item { padding:8px; border-bottom:1px solid #f0f0f0; display:flex; justify-content:space-between; align-items:center; font-size:13px; }
+    .tab-btn { background:#eee; color:#555; border:none; border-radius:4px; padding:5px; cursor:pointer; font-size:12px; }
+    .active-tab { background:#333; color:white; }
+</style>
 
-    // --- Tab Switcher ---
-    function switchTab(mode) {
-        document.getElementById('content-pdf').style.display = (mode === 'pdf') ? 'block' : 'none';
-        document.getElementById('content-text').style.display = (mode === 'text') ? 'block' : 'none';
-        
-        // Update Button Styles
-        document.getElementById('tab-pdf').style.background = (mode === 'pdf') ? '#34a853' : '#eee';
-        document.getElementById('tab-pdf').style.color = (mode === 'pdf') ? 'white' : '#555';
-        
-        document.getElementById('tab-text').style.background = (mode === 'text') ? '#fbbc04' : '#eee';
-        document.getElementById('tab-text').style.color = (mode === 'text') ? 'black' : '#555';
-    }
+<script>
+    // --- ตั้งค่า ---
+    const CF_URL = "https://notebooklm-chat-api-291927098582.asia-southeast1.run.app"; 
+    const PROJECT_ID = "291927098582";
+    // -------------
 
     function getToken() {
-        let t = document.getElementById('access-token').value;
-        t = t.trim().replace(/[^\x00-\x7F]/g, ""); // Clean Token
+        let t = document.getElementById('access-token').value.trim().replace(/[^\x00-\x7F]/g, ""); 
         if(!t) { alert("⚠️ กรุณาวาง Token ก่อนครับ"); return null; }
         return t;
     }
 
+    // --- Tab Management ---
+    function switchTab(mode) {
+        document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('.tab-btn').forEach(el => {
+            el.style.backgroundColor = '#eee'; el.style.color = '#555';
+        });
+        document.getElementById('content-'+mode).style.display = 'block';
+        let activeBtn = document.getElementById('tab-'+mode);
+        if(mode === 'pdf') activeBtn.style.backgroundColor = '#34a853';
+        else if(mode === 'text') activeBtn.style.backgroundColor = '#fbbc04';
+        else if(mode === 'web') activeBtn.style.backgroundColor = '#4285f4';
+        else if(mode === 'video') activeBtn.style.backgroundColor = '#ea4335';
+        
+        if(mode === 'text') activeBtn.style.color = 'black';
+        else activeBtn.style.color = 'white';
+    }
+
+    // --- Core Functions ---
     async function listNotebooks() {
         const token = getToken(); if(!token) return;
         const box = document.getElementById('notebook-list-box');
-        box.innerHTML = "<p style='text-align:center; margin-top:70px;'>⏳ Loading...</p>";
+        box.innerHTML = "<p style='text-align:center; margin-top:50px;'>⏳ กำลังโหลด...</p>";
         try {
-            const resp = await fetch(CF_URL, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token},
-                body: JSON.stringify({ action: 'list_notebooks' })
-            });
+            const resp = await fetch(CF_URL, { method: 'POST', headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token}, body: JSON.stringify({ action: 'list_notebooks' }) });
             const data = await resp.json();
             if(data.status === 'success') {
-                if(data.notebooks.length === 0) box.innerHTML = "<p style='text-align:center; margin-top:70px;'>ไม่พบสมุด</p>";
+                if(data.notebooks.length === 0) box.innerHTML = "<p style='text-align:center; margin-top:50px;'>ไม่พบสมุดงาน</p>";
                 else {
                     let html = '<ul style="list-style:none; padding:0; margin:0;">';
                     data.notebooks.forEach(nb => {
-                        html += `
-                        <li onclick="selectNotebook('${nb.id}')" style="padding:10px; border-bottom:1px solid #f0f0f0; display:flex; justify-content:space-between; cursor:pointer;">
-                            <div><span style="font-weight:bold;">📘 ${nb.title}</span><br><span style="font-size:11px; color:#999;">ID: ...${nb.id.slice(-6)}</span></div>
-                            <button onclick="deleteNotebook('${nb.id}', event)" style="background:#ffebee; color:red; border:none; padding:2px 8px; border-radius:4px; cursor:pointer;">🗑️</button>
-                        </li>`;
+                        html += `<li onclick="selectNotebook('${nb.id}')" style="padding:12px; border-bottom:1px solid #f0f0f0; display:flex; justify-content:space-between; cursor:pointer; transition:0.2s;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='white'">
+                            <div><span style="font-weight:bold; color:#333;">📘 ${nb.title}</span><br><span style="font-size:11px; color:#999;">ID: ...${nb.id.slice(-6)}</span></div>
+                            <button onclick="deleteNotebook('${nb.id}', event)" style="background:#ffebee; color:#c62828; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:12px;">ลบ</button></li>`;
                     });
                     box.innerHTML = html + '</ul>';
                 }
-            } else { box.innerHTML = `<p style="color:red; text-align:center;">Error: ${data.message}</p>`; }
+            } else { box.innerHTML = `<p style="color:red; text-align:center; margin-top:20px;">Error: ${data.message}</p>`; }
         } catch(e) { box.innerHTML = "Error: " + e; }
     }
 
     function selectNotebook(id) {
-        const input = document.getElementById('target-nb-id');
-        input.value = id;
-        input.style.backgroundColor = "#e3f2fd";
-        setTimeout(() => input.style.backgroundColor = "#f1f3f4", 500);
+        document.getElementById('target-nb-id').value = id;
+        document.getElementById('audio-control-panel').style.display = 'block'; 
+        document.getElementById('audio-status').innerHTML = "พร้อมสั่งงาน (กดปุ่มสร้างเสียง หากต้องการ)";
+        
+        // อัปเดตลิงก์ไป Google
+        const googleUrl = `https://notebooklm.cloud.google.com/global/notebooks/${id}?project=${PROJECT_ID}`;
+        document.getElementById('google-link').href = googleUrl;
+
+        listSources(id);
     }
 
-    async function createNotebook() {
-        const token = getToken(); if(!token) return;
-        const title = document.getElementById('nb-title').value;
-        if(!title) { alert("ใส่ชื่อสมุดก่อนครับ"); return; }
+    async function generateAudio() {
+        const token = getToken(); const nbId = document.getElementById('target-nb-id').value;
+        if(!nbId) { alert("เลือกสมุดก่อนครับ"); return; }
+        
+        const statusEl = document.getElementById('audio-status');
+        statusEl.innerHTML = "<span style='color:#673ab7;'>⏳ กำลังส่งคำสั่ง... (รอสักครู่)</span>";
+        
         try {
-            const resp = await fetch(CF_URL, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token},
-                body: JSON.stringify({ action: 'create_notebook', title: title })
-            });
+            const resp = await fetch(CF_URL, { method: 'POST', headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token}, body: JSON.stringify({ action: 'generate_audio', notebook_id: nbId }) });
             const data = await resp.json();
             if(data.status === 'success') {
-                selectNotebook(data.notebook_id);
-                listNotebooks();
-            } else { alert("Error: " + data.message); }
+                statusEl.innerHTML = "<span style='color:green; font-weight:bold;'>✅ สั่งสร้างเรียบร้อย!</span><br><span style='font-size:12px;'>ระบบกำลังประมวลผล... กดลิงก์ 'ไปฟังที่ Google' ด้านบนเพื่อเช็คผล</span>";
+            } else {
+                statusEl.innerHTML = `<span style='color:red;'>Error: ${data.message}</span>`;
+            }
         } catch(e) { alert(e); }
     }
 
-    async function deleteNotebook(id, event) {
-        event.stopPropagation();
-        if(!confirm("ยืนยันลบ?")) return;
-        const token = getToken(); if(!token) return;
-        try {
-            const resp = await fetch(CF_URL, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token},
-                body: JSON.stringify({ action: 'delete_notebook', notebook_id: id })
-            });
-            listNotebooks();
-        } catch(e) { alert(e); }
-    }
-
-    async function uploadFile() {
-        const token = getToken(); if(!token) return;
-        const nbId = document.getElementById('target-nb-id').value;
-        const fileInput = document.getElementById('file-input');
-        if(!nbId || fileInput.files.length === 0) { alert("ข้อมูลไม่ครบ"); return; }
-        
-        const reader = new FileReader();
-        reader.readAsDataURL(fileInput.files[0]);
-        document.getElementById('upload-result').innerHTML = "⏳ Uploading PDF...";
-        
-        reader.onload = async function() {
-            try {
-                const resp = await fetch(CF_URL, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token},
-                    body: JSON.stringify({ action: 'upload_file', notebook_id: nbId, file_data: reader.result.split(',')[1] })
-                });
-                const data = await resp.json();
-                handleSuccess(data, nbId);
-            } catch(e) { alert(e); }
-        };
-    }
-
-    async function addTextSource() {
-        const token = getToken(); if(!token) return;
-        const nbId = document.getElementById('target-nb-id').value;
-        const title = document.getElementById('text-title').value || "โน้ตใหม่";
-        const content = document.getElementById('text-body').value;
-        
-        if(!nbId || !content) { alert("ใส่ข้อความก่อนครับ"); return; }
-
-        document.getElementById('upload-result').innerHTML = "⏳ Saving Text...";
+    async function deleteAudio() {
+        if(!confirm("ต้องการลบเสียงบรรยายเดิมใช่ไหม?")) return;
+        const token = getToken(); const nbId = document.getElementById('target-nb-id').value;
+        const statusEl = document.getElementById('audio-status');
+        statusEl.innerHTML = "⏳ กำลังลบ...";
         
         try {
-            const resp = await fetch(CF_URL, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token},
-                body: JSON.stringify({ 
-                    action: 'add_source_text', 
-                    notebook_id: nbId, 
-                    text_content: content,
-                    source_title: title
-                })
-            });
+            const resp = await fetch(CF_URL, { method: 'POST', headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token}, body: JSON.stringify({ action: 'delete_audio', notebook_id: nbId }) });
             const data = await resp.json();
-            handleSuccess(data, nbId);
+            if(data.status === 'success') {
+                statusEl.innerHTML = "🗑️ ลบเสียงแล้ว คุณสามารถกด 'สร้างเสียงใหม่' ได้เลย";
+            } else {
+                statusEl.innerHTML = `<span style='color:red;'>ลบไม่สำเร็จ: ${data.message}</span>`;
+            }
         } catch(e) { alert(e); }
     }
 
-    function handleSuccess(data, nbId) {
-        const resDiv = document.getElementById('upload-result');
-        if(data.status === 'success') {
-            resDiv.innerHTML = `<span style="color:green;">✅ เรียบร้อย</span>`;
-            document.getElementById('link-container').style.display = 'block';
-            
-            // [UPDATED] ใช้ลิงก์สำหรับ Enterprise
-            document.getElementById('real-notebook-link').href = `https://notebooklm.cloud.google.com/global/notebooks/${nbId}?project=${PROJECT_ID}`;
-            
-            // Clear inputs
-            document.getElementById('file-input').value = "";
-            document.getElementById('text-title').value = "";
-            document.getElementById('text-body').value = "";
-        } else {
-            resDiv.innerHTML = `<span style="color:red;">Error: ${data.message}</span>`;
-        }
-    }
-    
-    // Bind global
-    window.listNotebooks = listNotebooks;
-    window.selectNotebook = selectNotebook;
-    window.deleteNotebook = deleteNotebook;
-    window.createNotebook = createNotebook;
-    window.uploadFile = uploadFile;
-    window.addTextSource = addTextSource;
-    window.switchTab = switchTab;
+    // --- Helper Functions (Source & Notebook Management) ---
+    async function listSources(nbId=null) { const token=getToken(); const targetId=nbId||document.getElementById('target-nb-id').value; if(!targetId)return; const box=document.getElementById('source-list-box'); box.innerHTML="<p style='text-align:center; color:#666;'>⏳...</p>"; try{ const resp=await fetch(CF_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({action:'list_sources',notebook_id:targetId})}); const data=await resp.json(); if(data.status==='success'){ if(data.sources.length===0)box.innerHTML="<p style='text-align:center;color:#999;font-size:12px;margin-top:20px;'>สมุดนี้ยังว่างเปล่า</p>"; else{ let html=''; data.sources.forEach(src=>{ let i='📄';if(src.type==='YouTube')i='▶️';if(src.type==='Web')i='🔗'; html+=`<div class="source-item"><div>${i} <b>${src.title}</b></div><button onclick="deleteSource('${src.id}','${src.title}')" style="color:red;border:1px solid #ffcdd2;background:#ffebee;border-radius:4px;cursor:pointer;font-size:10px;">ลบ</button></div>`; }); box.innerHTML=html; } } }catch(e){box.innerHTML="Error:"+e;} }
+    async function deleteSource(sid,t){ if(!confirm(`ลบ ${t}?`))return; const token=getToken(); const nid=document.getElementById('target-nb-id').value; await fetch(CF_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({action:'delete_source',notebook_id:nid,source_id:sid})}); listSources(nid); }
+    async function createNotebook(){ const token=getToken(); const t=document.getElementById('nb-title').value; if(!t)return; const resp=await fetch(CF_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({action:'create_notebook',title:t})}); const d=await resp.json(); if(d.status==='success'){selectNotebook(d.notebook_id);listNotebooks();} }
+    async function deleteNotebook(id,e){ e.stopPropagation(); if(!confirm("ลบสมุด?"))return; const token=getToken(); await fetch(CF_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({action:'delete_notebook',notebook_id:id})}); listNotebooks(); }
+    async function uploadFile(){ const token=getToken(); const nid=document.getElementById('target-nb-id').value; const f=document.getElementById('file-input'); if(!nid||!f.files[0])return; const r=new FileReader(); r.readAsDataURL(f.files[0]); document.getElementById('upload-result').innerHTML="⏳..."; r.onload=async function(){ await fetch(CF_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({action:'upload_file',notebook_id:nid,file_data:r.result.split(',')[1]})}); handleSuccess({status:'success'},nid); }; }
+    async function addSource(type){ const token=getToken(); const nid=document.getElementById('target-nb-id').value; let c="",t="Untitled"; if(type==='text'){t=document.getElementById('text-title').value;c=document.getElementById('text-body').value;} else if(type==='web'){t=document.getElementById('web-title').value;c=document.getElementById('web-url').value;} else if(type==='video'){c=document.getElementById('video-url').value;} if(!c)return; document.getElementById('upload-result').innerHTML="⏳..."; await fetch(CF_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({action:'add_source',notebook_id:nid,source_type:type,content:c,source_title:t})}); handleSuccess({status:'success'},nid); }
+    function handleSuccess(d,nid){ if(d.status==='success'){ document.getElementById('upload-result').innerHTML="<span style='color:green;'>✅ เรียบร้อย</span>"; listSources(nid); document.getElementById('file-input').value=""; document.getElementById('text-body').value=""; document.getElementById('web-url').value=""; document.getElementById('video-url').value=""; } else { document.getElementById('upload-result').innerHTML = `<span style='color:red;'>Error: ${d.message}</span>`; } }
+
+    // Expose functions to window
+    window.listNotebooks=listNotebooks; window.selectNotebook=selectNotebook; window.deleteNotebook=deleteNotebook; window.createNotebook=createNotebook; window.uploadFile=uploadFile; window.addSource=addSource; window.switchTab=switchTab; window.listSources=listSources; window.deleteSource=deleteSource; window.generateAudio=generateAudio; window.deleteAudio=deleteAudio;
 </script>
