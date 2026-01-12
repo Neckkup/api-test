@@ -3,15 +3,33 @@ from flask import jsonify
 import requests
 import base64
 import json
+import re
 
 # --- Config ---
 PROJECT_ID = "291927098582"
 LOCATION = "global" 
 # -------------
 
+# ฟังก์ชันแปลงลิงก์ YouTube ให้เป็นมาตรฐาน
+def clean_youtube_url(url):
+    # กรณีเป็นลิงก์ย่อ youtu.be
+    if "youtu.be" in url:
+        video_id = url.split("/")[-1].split("?")[0]
+        return f"https://www.youtube.com/watch?v={video_id}"
+    
+    # กรณีเป็นลิงก์ youtube.com แต่มีขยะต่อท้าย
+    if "youtube.com" in url and "v=" in url:
+        # ดึงเฉพาะ Video ID ออกมา
+        try:
+            video_id = url.split("v=")[1].split("&")[0]
+            return f"https://www.youtube.com/watch?v={video_id}"
+        except:
+            return url
+            
+    return url
+
 @functions_framework.http
 def main(request):
-    # 1. ตั้งค่า CORS (จำเป็นมากสำหรับ WordPress Ajax)
     headers = {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'POST, GET, OPTIONS, DELETE',
@@ -23,7 +41,6 @@ def main(request):
         return ('', 204, headers)
 
     try:
-        # 2. ตรวจสอบ Token
         auth_header = request.headers.get('Authorization')
         if not auth_header or not auth_header.startswith("Bearer "):
             return (jsonify({'status': 'error', 'message': 'Missing Token'}), 401, headers)
@@ -32,176 +49,89 @@ def main(request):
         request_json = request.get_json(silent=True)
         action = request_json.get('action')
         
-        # [FIXED] ระบุ Location ใน URL ให้ชัดเจน
         base_domain = f"https://{LOCATION}-discoveryengine.googleapis.com"
-        
-        # URL หลักสำหรับ API ทั่วไป
         api_base_url = f"{base_domain}/v1alpha/projects/{PROJECT_ID}/locations/{LOCATION}/notebooks"
-        
-        # URL สำหรับ Upload (มี path /upload/ แทรก)
         upload_base_url = f"{base_domain}/upload/v1alpha/projects/{PROJECT_ID}/locations/{LOCATION}/notebooks"
 
-        # ==========================================
-        # 1. List Notebooks
-        # ==========================================
+        # --- 1. List Notebooks ---
         if action == 'list_notebooks':
-            # ใช้ listRecentlyViewed
             api_url = f"{api_base_url}:listRecentlyViewed"
-            
-            response = requests.get(
-                api_url, 
-                params={"pageSize": 50}, 
-                headers={"Authorization": f"Bearer {user_token}"}
-            )
-
+            response = requests.get(api_url, params={"pageSize": 50}, headers={"Authorization": f"Bearer {user_token}"})
             if response.status_code == 200:
                 data = response.json()
-                notebooks = data.get('notebooks', [])
-                
-                result_list = []
-                for nb in notebooks:
-                    result_list.append({
-                        'title': nb.get('title') or nb.get('displayName'),
-                        'id': nb.get('name', '').split('/')[-1]
-                    })
+                result_list = [{'title': nb.get('title') or nb.get('displayName'), 'id': nb.get('name', '').split('/')[-1]} for nb in data.get('notebooks', [])]
                 return (jsonify({'status': 'success', 'notebooks': result_list}), 200, headers)
             else:
                 return (jsonify({'status': 'error', 'message': f"List Failed: {response.text}"}), response.status_code, headers)
 
-        # ==========================================
-        # 2. Delete Notebook
-        # ==========================================
+        # --- 2. Delete Notebook ---
         elif action == 'delete_notebook':
             notebook_id = request_json.get('notebook_id')
-            if not notebook_id: return (jsonify({'status': 'error', 'message': 'Missing ID'}), 400, headers)
-
             full_name = f"projects/{PROJECT_ID}/locations/{LOCATION}/notebooks/{notebook_id}"
-            api_url = f"{api_base_url}:batchDelete"
-            
-            response = requests.post(
-                api_url, 
-                headers={"Authorization": f"Bearer {user_token}", "Content-Type": "application/json"}, 
-                json={"names": [full_name]}
-            )
+            response = requests.post(f"{api_base_url}:batchDelete", headers={"Authorization": f"Bearer {user_token}", "Content-Type": "application/json"}, json={"names": [full_name]})
+            return (jsonify({'status': 'success', 'message': 'Deleted'}), 200, headers) if response.status_code == 200 else (jsonify({'status': 'error', 'message': response.text}), response.status_code, headers)
 
-            if response.status_code == 200:
-                return (jsonify({'status': 'success', 'message': 'Deleted'}), 200, headers)
-            else:
-                return (jsonify({'status': 'error', 'message': f"Delete Failed: {response.text}"}), response.status_code, headers)
-
-        # ==========================================
-        # 3. Create Notebook
-        # ==========================================
+        # --- 3. Create Notebook ---
         elif action == 'create_notebook':
-            notebook_title = request_json.get('title', 'My WordPress Notebook')
-            
-            response = requests.post(
-                api_base_url, 
-                headers={"Authorization": f"Bearer {user_token}", "Content-Type": "application/json"}, 
-                json={"title": notebook_title}
-            )
-            
+            notebook_title = request_json.get('title', 'My Notebook')
+            response = requests.post(api_base_url, headers={"Authorization": f"Bearer {user_token}", "Content-Type": "application/json"}, json={"title": notebook_title})
             if response.status_code == 200:
                 data = response.json()
-                return (jsonify({
-                    'status': 'success', 
-                    'notebook_id': data.get('name', '').split('/')[-1]
-                }), 200, headers)
+                return (jsonify({'status': 'success', 'notebook_id': data.get('name', '').split('/')[-1]}), 200, headers)
             else:
-                return (jsonify({'status': 'error', 'message': f"Create Failed: {response.text}"}), response.status_code, headers)
+                return (jsonify({'status': 'error', 'message': response.text}), response.status_code, headers)
 
-        # ==========================================
-        # 4. Upload File (PDF)
-        # ==========================================
+        # --- 4. Upload File ---
         elif action == 'upload_file':
             notebook_id = request_json.get('notebook_id')
             file_data_b64 = request_json.get('file_data')
-            
-            if not notebook_id or not file_data_b64:
-                return (jsonify({'status': 'error', 'message': 'Missing data'}), 400, headers)
+            if not notebook_id or not file_data_b64: return (jsonify({'status': 'error', 'message': 'Missing data'}), 400, headers)
+            try: file_binary = base64.b64decode(file_data_b64)
+            except: return (jsonify({'status': 'error', 'message': 'Base64 Error'}), 400, headers)
 
-            try:
-                file_binary = base64.b64decode(file_data_b64)
-            except:
-                return (jsonify({'status': 'error', 'message': 'Base64 Error'}), 400, headers)
-
-            # ใช้ upload_base_url ที่เตรียมไว้
-            target_url = f"{upload_base_url}/{notebook_id}/sources:uploadFile"
-            
             response = requests.post(
-                target_url, 
-                headers={
-                    "Authorization": f"Bearer {user_token}",
-                    "X-Goog-Upload-File-Name": "wordpress_upload.pdf", 
-                    "X-Goog-Upload-Protocol": "raw",
-                    "Content-Type": "application/pdf"
-                }, 
+                f"{upload_base_url}/{notebook_id}/sources:uploadFile", 
+                headers={"Authorization": f"Bearer {user_token}", "X-Goog-Upload-File-Name": "uploaded_file.pdf", "X-Goog-Upload-Protocol": "raw", "Content-Type": "application/pdf"}, 
                 data=file_binary
             )
+            return (jsonify({'status': 'success', 'message': 'Uploaded'}), 200, headers) if response.status_code == 200 else (jsonify({'status': 'error', 'message': response.text}), response.status_code, headers)
 
-            if response.status_code == 200:
-                return (jsonify({'status': 'success', 'message': 'Uploaded'}), 200, headers)
-            else:
-                return (jsonify({'status': 'error', 'message': f"Upload Failed: {response.text}"}), response.status_code, headers)
-
-        # ==========================================
-        # 5. Add Text Source (Fix for API Update) 📝
-        # ==========================================
-        elif action == 'add_source_text':
+        # --- 5. Add Source (Text / Web / YouTube) [Auto-Clean URL] ---
+        elif action == 'add_source':
             notebook_id = request_json.get('notebook_id')
-            text_content = request_json.get('text_content')
-            source_title = request_json.get('source_title', 'WordPress Note')
+            source_type = request_json.get('source_type')
+            content_input = request_json.get('content')
+            source_title = request_json.get('source_title', 'Untitled Source')
 
-            if not notebook_id or not text_content:
+            if not notebook_id or not content_input:
                 return (jsonify({'status': 'error', 'message': 'Missing data'}), 400, headers)
 
             target_url = f"{api_base_url}/{notebook_id}/sources:batchCreate"
+            user_content = {}
             
-            # [FIXED] ใช้โครงสร้าง JSON แบบใหม่ (textContent)
-            payload = {
-                "userContents": [
-                    {
-                        "textContent": {
-                            "sourceName": source_title,
-                            "content": text_content
-                        }
-                    }
-                ]
-            }
+            if source_type == 'text':
+                user_content = { "textContent": { "sourceName": source_title, "content": content_input } }
+            
+            elif source_type == 'web':
+                user_content = { "webContent": { "url": content_input, "sourceName": source_title } }
 
-            response = requests.post(
-                target_url, 
-                headers={"Authorization": f"Bearer {user_token}", "Content-Type": "application/json"}, 
-                json=payload
-            )
+            elif source_type == 'video':
+                # [FIXED] ล้าง URL ก่อนส่ง
+                clean_url = clean_youtube_url(content_input)
+                user_content = { 
+                    "videoContent": { 
+                        "youtubeUrl": clean_url  # ใช้ URL ที่ล้างแล้ว
+                    } 
+                }
+
+            payload = { "userContents": [ user_content ] }
+
+            response = requests.post(target_url, headers={"Authorization": f"Bearer {user_token}", "Content-Type": "application/json"}, json=payload)
 
             if response.status_code == 200:
-                return (jsonify({'status': 'success', 'message': 'Text Added'}), 200, headers)
+                return (jsonify({'status': 'success', 'message': f'{source_type} Added'}), 200, headers)
             else:
-                return (jsonify({'status': 'error', 'message': f"Add Text Failed: {response.text}"}), response.status_code, headers)
-
-        # ==========================================
-        # 6. Get Notebook
-        # ==========================================
-        elif action == 'get_notebook':
-            notebook_id = request_json.get('notebook_id')
-            if not notebook_id: return (jsonify({'status': 'error', 'message': 'Missing ID'}), 400, headers)
-            
-            target_url = f"{api_base_url}/{notebook_id}"
-            response = requests.get(target_url, headers={"Authorization": f"Bearer {user_token}"})
-
-            if response.status_code == 200:
-                data = response.json()
-                return (jsonify({
-                    'status': 'success', 
-                    'notebook': {
-                        'title': data.get('title') or data.get('displayName'),
-                        'id': data.get('name', '').split('/')[-1],
-                        'created': data.get('createTime')
-                    }
-                }), 200, headers)
-            else:
-                return (jsonify({'status': 'error', 'message': f"Get Failed: {response.text}"}), response.status_code, headers)
+                return (jsonify({'status': 'error', 'message': f"Add Source Failed: {response.text}"}), response.status_code, headers)
 
         else:
             return (jsonify({'status': 'error', 'message': 'Unknown Action'}), 400, headers)
